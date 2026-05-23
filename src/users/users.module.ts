@@ -4,6 +4,7 @@ import { UsersController } from './users.controller';
 import { UsersRepository } from './users.repository';
 import { UsersService } from './users.service';
 import { User, UserSchema } from './schemas/user.schema';
+import { AdminSeedService } from './admin-seed.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { User, UserSchema } from './schemas/user.schema';
     ]),
   ],
   controllers: [UsersController],
-  providers: [UsersService, UsersRepository],
+  providers: [UsersService, UsersRepository, AdminSeedService],
   exports: [UsersService, UsersRepository],
 })
 export class UsersModule {}

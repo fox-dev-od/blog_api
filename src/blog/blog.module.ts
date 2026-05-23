@@ -5,9 +5,11 @@ import { BlogController } from './blog.controller';
 import { BlogService } from './blog.service';
 import { BlogRepository } from './blog.repository';
 import { BlogPost, BlogPostSchema } from './schemas/blog-post.schema';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     MongooseModule.forFeature([
       {
         name: BlogPost.name,

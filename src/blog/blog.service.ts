@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { isValidObjectId, Types } from 'mongoose';
 
 import { BlogRepository } from './blog.repository';
@@ -13,12 +14,19 @@ import { GetBlogPostsQueryDto } from './dto/get-blog-posts-query.dto';
 import { BlogPostStatus } from './enums/blog-post-status.enum';
 import { UserRole } from '../users/enums/user-role.enum';
 import { CurrentUserData } from '../auth/interfaces/jwt-payload.interface';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class BlogService {
-  constructor(private readonly blogRepository: BlogRepository) {}
+  constructor(
+    private readonly blogRepository: BlogRepository,
+    private readonly redisService: RedisService,
+  ) {}
 
-  async create(createBlogPostDto: CreateBlogPostDto, currentUser: CurrentUserData) {
+  async create(
+    createBlogPostDto: CreateBlogPostDto,
+    currentUser: CurrentUserData,
+  ) {
     this.validateBlocks(createBlogPostDto.blocks);
 
     const normalizedSlug = this.normalizeSlug(createBlogPostDto.slug);
@@ -41,18 +49,31 @@ export class BlogService {
       status,
       authorId: new Types.ObjectId(currentUser.userId),
       blocks:
-          createBlogPostDto.blocks?.map((block) => ({
-            imageUrl: block.imageUrl?.trim() ?? null,
-            html: block.html?.trim() ?? null,
-            layout: block.layout,
-          })) ?? [],
+        createBlogPostDto.blocks?.map((block) => ({
+          imageUrl: block.imageUrl?.trim() ?? null,
+          html: block.html?.trim() ?? null,
+          layout: block.layout,
+        })) ?? [],
       publishedAt: status === BlogPostStatus.PUBLISHED ? new Date() : null,
     });
 
-    return this.toResponse(createdPost);
+    const response = this.toResponse(createdPost);
+    await this.invalidateBlogCache(
+      String(createdPost._id),
+      null,
+      response.slug,
+    );
+
+    return response;
   }
 
   async findAllPublished(query: GetBlogPostsQueryDto) {
+    const cacheKey = this.buildQueryCacheKey('blog:list', query);
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
@@ -70,7 +91,7 @@ export class BlogService {
       }),
     ]);
 
-    return {
+    const response = {
       items: items.map((item) => this.toResponse(item)),
       meta: {
         total,
@@ -79,24 +100,80 @@ export class BlogService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    await this.redisService.set(cacheKey, response);
+
+    return response;
   }
 
   async findOnePublished(slug: string) {
-    const post = await this.blogRepository.findPublishedBySlug(
-        this.normalizeSlug(slug),
+    const normalizedSlug = this.normalizeSlug(slug);
+    const cacheKey = this.redisService.buildKey(
+      'blog',
+      'public',
+      'slug',
+      normalizedSlug,
     );
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const post = await this.blogRepository.findPublishedBySlug(normalizedSlug);
 
     if (!post) {
       throw new NotFoundException('Article not found');
     }
 
-    return this.toResponse(post);
+    const response = this.toResponse(post);
+    await this.redisService.set(cacheKey, response);
+
+    return response;
+  }
+
+  async findOne(id: string) {
+    this.validateId(id);
+
+    const cacheKey = this.redisService.buildKey('blog', 'id', id);
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const post = await this.blogRepository.findById(id);
+    if (!post) {
+      throw new NotFoundException('Article not found');
+    }
+
+    const response = this.toResponse(post);
+    await this.redisService.set(cacheKey, response);
+
+    return response;
+  }
+
+  async findBySlug(slug: string) {
+    const normalizedSlug = this.normalizeSlug(slug);
+    const cacheKey = this.redisService.buildKey('blog', 'slug', normalizedSlug);
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const post = await this.blogRepository.findBySlug(normalizedSlug);
+    if (!post) {
+      throw new NotFoundException('Article not found');
+    }
+
+    const response = this.toResponse(post);
+    await this.redisService.set(cacheKey, response);
+
+    return response;
   }
 
   async update(
-      id: string,
-      updateBlogPostDto: UpdateBlogPostDto,
-      currentUser: CurrentUserData,
+    id: string,
+    updateBlogPostDto: UpdateBlogPostDto,
+    currentUser: CurrentUserData,
   ) {
     this.validateId(id);
 
@@ -127,7 +204,8 @@ export class BlogService {
         throw new BadRequestException('Invalid slug');
       }
 
-      const postWithSameSlug = await this.blogRepository.findBySlug(normalizedSlug);
+      const postWithSameSlug =
+        await this.blogRepository.findBySlug(normalizedSlug);
       if (postWithSameSlug && String(postWithSameSlug._id) !== id) {
         throw new BadRequestException('Slug already exists');
       }
@@ -151,8 +229,8 @@ export class BlogService {
       updateData.status = updateBlogPostDto.status;
 
       if (
-          updateBlogPostDto.status === BlogPostStatus.PUBLISHED &&
-          existingPost.status !== BlogPostStatus.PUBLISHED
+        updateBlogPostDto.status === BlogPostStatus.PUBLISHED &&
+        existingPost.status !== BlogPostStatus.PUBLISHED
       ) {
         updateData.publishedAt = new Date();
       }
@@ -167,7 +245,10 @@ export class BlogService {
       throw new NotFoundException('Article not found');
     }
 
-    return this.toResponse(updatedPost);
+    const response = this.toResponse(updatedPost);
+    await this.invalidateBlogCache(id, existingPost.slug, response.slug);
+
+    return response;
   }
 
   async remove(id: string, currentUser: CurrentUserData) {
@@ -181,6 +262,7 @@ export class BlogService {
     this.ensureCanManage(existingPost, currentUser);
 
     await this.blogRepository.remove(id);
+    await this.invalidateBlogCache(id, existingPost.slug, null);
 
     return {
       deleted: true,
@@ -211,7 +293,7 @@ export class BlogService {
 
       if (!hasImage && !hasHtml) {
         throw new BadRequestException(
-            'Each block must contain imageUrl or html',
+          'Each block must contain imageUrl or html',
         );
       }
     }
@@ -222,23 +304,67 @@ export class BlogService {
       return [];
     }
 
-    return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
+    return [
+      ...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean)),
+    ];
   }
 
   private normalizeSlug(slug: string) {
-    return slug
+    return (
+      slug
         ?.trim()
         .toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '')
         .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') ?? '';
+        .replace(/^-|-$/g, '') ?? ''
+    );
   }
 
   private validateId(id: string) {
     if (!isValidObjectId(id)) {
       throw new BadRequestException('Invalid article id');
     }
+  }
+
+  private async invalidateBlogCache(
+    id: string,
+    oldSlug?: string | null,
+    newSlug?: string | null,
+  ) {
+    const keys = [
+      this.redisService.buildKey('blog', 'id', id),
+      oldSlug ? this.redisService.buildKey('blog', 'slug', oldSlug) : null,
+      newSlug ? this.redisService.buildKey('blog', 'slug', newSlug) : null,
+      oldSlug
+        ? this.redisService.buildKey('blog', 'public', 'slug', oldSlug)
+        : null,
+      newSlug
+        ? this.redisService.buildKey('blog', 'public', 'slug', newSlug)
+        : null,
+    ].filter((key): key is string => !!key);
+
+    await this.redisService.delMany(keys);
+    await this.redisService.delByPattern('blog:list:*');
+  }
+
+  private buildQueryCacheKey(prefix: string, query: Record<string, any>) {
+    const normalizedQuery = Object.keys(query ?? {})
+      .sort()
+      .reduce<Record<string, any>>((result, key) => {
+        const value = query[key];
+        if (value !== undefined && value !== null && value !== '') {
+          result[key] = value;
+        }
+
+        return result;
+      }, {});
+
+    const hash = createHash('sha1')
+      .update(JSON.stringify(normalizedQuery))
+      .digest('hex');
+
+    return this.redisService.buildKey(prefix, hash);
   }
 
   private toResponse(post: any) {

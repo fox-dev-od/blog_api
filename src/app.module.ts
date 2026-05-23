@@ -7,6 +7,10 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
+import { CaseCategoriesModule } from './case-categories/case-categories.module';
+import { CasesModule } from './cases/cases.module';
+import { ActivityLogModule } from './activity-log/activity-log.module';
+import { BlacklistModule } from './blacklist/blacklist.module';
 
 @Module({
   imports: [
@@ -35,8 +39,8 @@ import { BlogModule } from './blog/blog.module';
         throttlers: [
           {
             name: 'default',
-            ttl: configService.get<number>('THROTTLE_TTL', 60_000),
-            limit: configService.get<number>('THROTTLE_LIMIT', 20),
+            ttl: Number(configService.get('THROTTLE_TTL') ?? 60_000),
+            limit: Number(configService.get('THROTTLE_LIMIT') ?? 20),
           },
         ],
       }),
@@ -45,6 +49,10 @@ import { BlogModule } from './blog/blog.module';
     UsersModule,
     AuthModule,
     BlogModule,
+    CaseCategoriesModule,
+    CasesModule,
+    ActivityLogModule,
+    BlacklistModule,
   ],
   providers: [
     {

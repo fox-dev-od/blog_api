@@ -4,58 +4,57 @@ import { HydratedDocument, Types } from 'mongoose';
 export type AuthSessionDocument = HydratedDocument<AuthSession>;
 
 @Schema({
-    timestamps: true,
-    collection: 'auth_sessions',
+  timestamps: true,
+  collection: 'auth_sessions',
 })
 export class AuthSession {
-    @Prop({
-        type: Types.ObjectId,
-        ref: 'User',
-        required: true,
-        index: true,
-    })
-    userId: Types.ObjectId;
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
+  userId: Types.ObjectId;
 
-    @Prop({
-        type: String,
-        required: true,
-        select: false,
-    })
-    tokenHash: string;
+  @Prop({
+    type: String,
+    required: true,
+    select: false,
+  })
+  tokenHash: string;
 
-    @Prop({
-        type: String,
-        default: null,
-    })
-    userAgent: string | null;
+  @Prop({
+    type: String,
+    default: null,
+  })
+  userAgent: string | null;
 
-    @Prop({
-        type: String,
-        default: null,
-    })
-    ipAddress: string | null;
+  @Prop({
+    type: String,
+    default: null,
+  })
+  ipAddress: string | null;
 
-    @Prop({
-        type: Date,
-        required: true,
-        index: true,
-    })
-    expiresAt: Date;
+  @Prop({
+    type: Date,
+    required: true,
+  })
+  expiresAt: Date;
 
-    @Prop({
-        type: Date,
-        default: null,
-    })
-    revokedAt: Date | null;
+  @Prop({
+    type: Date,
+    default: null,
+  })
+  revokedAt: Date | null;
 
-    @Prop({
-        type: Date,
-        default: null,
-    })
-    lastUsedAt: Date | null;
+  @Prop({
+    type: Date,
+    default: null,
+  })
+  lastUsedAt: Date | null;
 
-    createdAt?: Date;
-    updatedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const AuthSessionSchema = SchemaFactory.createForClass(AuthSession);
