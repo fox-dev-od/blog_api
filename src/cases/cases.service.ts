@@ -83,6 +83,48 @@ export class CasesService {
     return response;
   }
 
+  async findPublicList() {
+    const cacheKey = this.buildQueryCacheKey('case:public:list', {});
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const cases = await this.casesRepository.findPublicList();
+    const response = cases.map((caseItem) => this.toResponse(caseItem));
+    await this.redisService.set(cacheKey, response);
+
+    return response;
+  }
+
+  async findPublicByCategorySlug(categorySlug: string) {
+    const normalizedSlug = this.normalizeSlug(categorySlug);
+    const cacheKey = this.redisService.buildKey(
+      'case',
+      'public',
+      'category',
+      normalizedSlug,
+    );
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const category =
+      await this.caseCategoriesRepository.findActiveBySlug(normalizedSlug);
+    if (!category) {
+      throw new NotFoundException('Case category not found');
+    }
+
+    const cases = await this.casesRepository.findPublicByCategoryId(
+      String(category._id),
+    );
+    const response = cases.map((caseItem) => this.toResponse(caseItem));
+    await this.redisService.set(cacheKey, response);
+
+    return response;
+  }
+
   async findOne(id: string) {
     this.validateId(id, 'Invalid case id');
 
@@ -315,6 +357,7 @@ export class CasesService {
         label: item.label.trim(),
         value: item.value.trim(),
         icon: item.icon?.trim() || null,
+        iconSize: item.iconSize ?? 24,
         order: item.order ?? 0,
       })) ?? []
     );
@@ -387,7 +430,9 @@ export class CasesService {
 
     await this.redisService.delMany(keys);
     await this.redisService.delByPattern('case:list:*');
+    await this.redisService.delByPattern('case:public:list:*');
     await this.redisService.delByPattern('case:category:*');
+    await this.redisService.delByPattern('case:public:category:*');
   }
 
   private buildQueryCacheKey(prefix: string, query: Record<string, any>) {

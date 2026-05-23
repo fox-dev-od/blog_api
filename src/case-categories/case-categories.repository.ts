@@ -25,12 +25,23 @@ export class CaseCategoriesRepository {
       .exec();
   }
 
+  findActive() {
+    return this.caseCategoryModel
+      .find({ isActive: true })
+      .sort({ order: 1, createdAt: -1 })
+      .exec();
+  }
+
   findById(id: string) {
     return this.caseCategoryModel.findById(id).exec();
   }
 
   findBySlug(slug: string) {
     return this.caseCategoryModel.findOne({ slug }).exec();
+  }
+
+  findActiveBySlug(slug: string) {
+    return this.caseCategoryModel.findOne({ slug, isActive: true }).exec();
   }
 
   update(id: string, data: UpdateQuery<CaseCategory>) {

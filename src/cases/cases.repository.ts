@@ -23,6 +23,25 @@ export class CasesRepository {
       .exec();
   }
 
+  findPublicList() {
+    return this.caseModel
+      .find({ isActive: true })
+      .populate('categoryId')
+      .sort({ order: 1, createdAt: -1 })
+      .exec();
+  }
+
+  findPublicByCategoryId(categoryId: string) {
+    return this.caseModel
+      .find({
+        categoryId,
+        isActive: true,
+      })
+      .populate('categoryId')
+      .sort({ order: 1, createdAt: -1 })
+      .exec();
+  }
+
   findById(id: string) {
     return this.caseModel.findById(id).populate('categoryId').exec();
   }

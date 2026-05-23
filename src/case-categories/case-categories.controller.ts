@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 
+import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/enums/user-role.enum';
 import { CaseCategoriesService } from './case-categories.service';
@@ -22,6 +23,18 @@ export class CaseCategoriesController {
   @Get()
   findAll() {
     return this.caseCategoriesService.findAll();
+  }
+
+  @Public()
+  @Get('public')
+  findAllActive() {
+    return this.caseCategoriesService.findAllActive();
+  }
+
+  @Public()
+  @Get('public/by-slug/:slug')
+  findActiveBySlug(@Param('slug') slug: string) {
+    return this.caseCategoriesService.findActiveBySlug(slug);
   }
 
   @Roles(UserRole.ADMIN)

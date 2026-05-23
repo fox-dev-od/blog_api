@@ -32,6 +32,12 @@ export class CaseInfoItem {
 
   @Prop({
     type: Number,
+    default: 24,
+  })
+  iconSize: number;
+
+  @Prop({
+    type: Number,
     default: 0,
   })
   order: number;

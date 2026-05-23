@@ -63,6 +63,24 @@ export class CaseCategoriesService {
     return response;
   }
 
+  async findAllActive() {
+    const cacheKey = this.redisService.buildKey(
+      'case-category',
+      'list',
+      'active',
+    );
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const categories = await this.caseCategoriesRepository.findActive();
+    const response = categories.map((category) => this.toResponse(category));
+    await this.redisService.set(cacheKey, response);
+
+    return response;
+  }
+
   async findOne(id: string) {
     this.validateId(id);
 
@@ -97,6 +115,31 @@ export class CaseCategoriesService {
 
     const category =
       await this.caseCategoriesRepository.findBySlug(normalizedSlug);
+    if (!category) {
+      throw new NotFoundException('Case category not found');
+    }
+
+    const response = this.toResponse(category);
+    await this.redisService.set(cacheKey, response);
+
+    return response;
+  }
+
+  async findActiveBySlug(slug: string) {
+    const normalizedSlug = this.normalizeSlug(slug);
+    const cacheKey = this.redisService.buildKey(
+      'case-category',
+      'public',
+      'slug',
+      normalizedSlug,
+    );
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const category =
+      await this.caseCategoriesRepository.findActiveBySlug(normalizedSlug);
     if (!category) {
       throw new NotFoundException('Case category not found');
     }
@@ -217,6 +260,12 @@ export class CaseCategoriesService {
         : null,
       newSlug
         ? this.redisService.buildKey('case-category', 'slug', newSlug)
+        : null,
+      oldSlug
+        ? this.redisService.buildKey('case-category', 'public', 'slug', oldSlug)
+        : null,
+      newSlug
+        ? this.redisService.buildKey('case-category', 'public', 'slug', newSlug)
         : null,
     ].filter((key): key is string => !!key);
 

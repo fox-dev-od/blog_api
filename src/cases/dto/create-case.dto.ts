@@ -27,6 +27,10 @@ export class CaseInfoItemDto {
 
   @IsOptional()
   @IsNumber()
+  iconSize?: number;
+
+  @IsOptional()
+  @IsNumber()
   order?: number;
 }
 

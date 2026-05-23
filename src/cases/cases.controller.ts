@@ -25,6 +25,18 @@ export class CasesController {
     return this.casesService.findAll();
   }
 
+  @Public()
+  @Get('public')
+  findPublicList() {
+    return this.casesService.findPublicList();
+  }
+
+  @Public()
+  @Get('public/by-category/:categorySlug')
+  findPublicByCategorySlug(@Param('categorySlug') categorySlug: string) {
+    return this.casesService.findPublicByCategorySlug(categorySlug);
+  }
+
   @Roles(UserRole.ADMIN)
   @Post()
   create(@Body() createCaseDto: CreateCaseDto) {
