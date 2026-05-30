@@ -9,10 +9,37 @@ export type BlogPostDocument = HydratedDocument<BlogPost>;
 export class BlogContentBlock {
   @Prop({
     type: String,
+    default: 'text',
+    trim: true,
+  })
+  type: string;
+
+  @Prop({
+    type: String,
+    default: null,
+    trim: true,
+  })
+  heading: string | null;
+
+  @Prop({
+    type: String,
+    default: null,
+    trim: true,
+  })
+  text: string | null;
+
+  @Prop({
+    type: String,
     default: null,
     trim: true,
   })
   imageUrl: string | null;
+
+  @Prop({
+    type: [String],
+    default: [],
+  })
+  images: string[];
 
   @Prop({
     type: String,
@@ -26,6 +53,12 @@ export class BlogContentBlock {
     required: true,
   })
   layout: BlogBlockLayout;
+
+  @Prop({
+    type: Number,
+    default: 0,
+  })
+  order: number;
 }
 
 export const BlogContentBlockSchema =
@@ -52,6 +85,20 @@ export class BlogPost {
     maxlength: 300,
   })
   subtitle: string | null;
+
+  @Prop({
+    type: String,
+    default: null,
+    trim: true,
+  })
+  coverImage: string | null;
+
+  @Prop({
+    type: String,
+    default: null,
+    trim: true,
+  })
+  description: string | null;
 
   @Prop({
     type: String,

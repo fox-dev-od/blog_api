@@ -14,6 +14,7 @@ import { UserRole } from '../users/enums/user-role.enum';
 import { CasesService } from './cases.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
+import { ActivityLog } from '../activity-log/decorators/activity.decorator';
 
 @Controller('cases')
 export class CasesController {
@@ -38,6 +39,7 @@ export class CasesController {
   }
 
   @Roles(UserRole.ADMIN)
+  @ActivityLog({ action: 'CREATE_CASE', entity: 'case' })
   @Post()
   create(@Body() createCaseDto: CreateCaseDto) {
     return this.casesService.create(createCaseDto);
@@ -62,12 +64,14 @@ export class CasesController {
   }
 
   @Roles(UserRole.ADMIN)
+  @ActivityLog({ action: 'UPDATE_CASE', entity: 'case' })
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCaseDto: UpdateCaseDto) {
     return this.casesService.update(id, updateCaseDto);
   }
 
   @Roles(UserRole.ADMIN)
+  @ActivityLog({ action: 'DELETE_CASE', entity: 'case' })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.casesService.remove(id);

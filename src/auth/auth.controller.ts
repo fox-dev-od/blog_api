@@ -6,9 +6,9 @@ import { LoginDto } from './dto/login.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
 import * as jwtPayloadInterface from './interfaces/jwt-payload.interface';
 import { Public } from './decorators/public.decorator';
-import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UsersService } from '../users/users.service';
 import { Throttle } from '@nestjs/throttler';
+import { ActivityLog } from '../activity-log/decorators/activity.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -24,6 +24,7 @@ export class AuthController {
     },
   })
   @Public()
+  @ActivityLog({ action: 'USER_LOGIN', entity: 'auth' })
   @Post('login')
   async login(
     @Body() loginDto: LoginDto,
@@ -40,17 +41,12 @@ export class AuthController {
     return result.user;
   }
 
-  @Post('register')
-  @Public()
-  register(@Body() registerDto: CreateUserDto) {
-    return this.userService.create(registerDto);
-  }
-
   @Get('me')
   me(@CurrentUser() currentUser: jwtPayloadInterface.CurrentUserData) {
     return this.authService.getMe(currentUser);
   }
 
+  @ActivityLog({ action: 'USER_LOGOUT', entity: 'auth' })
   @Post('logout')
   async logout(
     @CurrentUser() currentUser: jwtPayloadInterface.CurrentUserData,
@@ -62,6 +58,7 @@ export class AuthController {
     return result;
   }
 
+  @ActivityLog({ action: 'USER_LOGOUT_ALL', entity: 'auth' })
   @Post('logout-all')
   async logoutAll(
     @CurrentUser() currentUser: jwtPayloadInterface.CurrentUserData,

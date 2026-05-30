@@ -21,6 +21,14 @@ export class CreateBlogPostDto {
     @MaxLength(300)
     subtitle?: string;
 
+    @IsOptional()
+    @IsString()
+    coverImage?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
     @IsString()
     slug: string;
 

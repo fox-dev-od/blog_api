@@ -44,15 +44,22 @@ export class BlogService {
     const createdPost = await this.blogRepository.create({
       title: createBlogPostDto.title.trim(),
       subtitle: createBlogPostDto.subtitle?.trim() ?? null,
+      coverImage: createBlogPostDto.coverImage?.trim() ?? null,
+      description: createBlogPostDto.description?.trim() ?? null,
       slug: normalizedSlug,
       tags: this.normalizeTags(createBlogPostDto.tags),
       status,
       authorId: new Types.ObjectId(currentUser.userId),
       blocks:
-        createBlogPostDto.blocks?.map((block) => ({
+        createBlogPostDto.blocks?.map((block, index) => ({
+          type: block.type?.trim() ?? 'text',
+          heading: block.heading?.trim() ?? null,
+          text: block.text?.trim() ?? null,
           imageUrl: block.imageUrl?.trim() ?? null,
+          images: block.images ?? [],
           html: block.html?.trim() ?? null,
           layout: block.layout,
+          order: block.order ?? index,
         })) ?? [],
       publishedAt: status === BlogPostStatus.PUBLISHED ? new Date() : null,
     });
@@ -104,6 +111,50 @@ export class BlogService {
     await this.redisService.set(cacheKey, response);
 
     return response;
+  }
+
+  async findAllForAdmin(query: GetBlogPostsQueryDto, currentUser: CurrentUserData) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 100;
+    const skip = (page - 1) * limit;
+
+    const filter: Record<string, any> = {};
+
+    if (currentUser.role === UserRole.AUTHOR) {
+      filter.authorId = new Types.ObjectId(currentUser.userId);
+    }
+
+    if (query.search?.trim()) {
+      const searchRegex = new RegExp(query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { title: searchRegex },
+        { subtitle: searchRegex },
+        { tags: searchRegex },
+      ];
+    }
+
+    if (query.tag?.trim()) {
+      filter.tags = query.tag.trim().toLowerCase();
+    }
+
+    if (query.status) {
+      filter.status = query.status;
+    }
+
+    const [items, total] = await Promise.all([
+      this.blogRepository.findAdminList(filter, skip, limit),
+      this.blogRepository.countAdmin(filter),
+    ]);
+
+    return {
+      items: items.map((item) => this.toResponse(item)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOnePublished(slug: string) {
@@ -198,6 +249,14 @@ export class BlogService {
       updateData.subtitle = updateBlogPostDto.subtitle?.trim() || null;
     }
 
+    if (updateBlogPostDto.coverImage !== undefined) {
+      updateData.coverImage = updateBlogPostDto.coverImage?.trim() || null;
+    }
+
+    if (updateBlogPostDto.description !== undefined) {
+      updateData.description = updateBlogPostDto.description?.trim() || null;
+    }
+
     if (updateBlogPostDto.slug !== undefined) {
       const normalizedSlug = this.normalizeSlug(updateBlogPostDto.slug);
       if (!normalizedSlug) {
@@ -218,10 +277,15 @@ export class BlogService {
     }
 
     if (updateBlogPostDto.blocks !== undefined) {
-      updateData.blocks = updateBlogPostDto.blocks.map((block) => ({
+      updateData.blocks = updateBlogPostDto.blocks.map((block, index) => ({
+        type: block.type?.trim() ?? 'text',
+        heading: block.heading?.trim() ?? null,
+        text: block.text?.trim() ?? null,
         imageUrl: block.imageUrl?.trim() ?? null,
+        images: block.images ?? [],
         html: block.html?.trim() ?? null,
         layout: block.layout,
+        order: block.order ?? index,
       }));
     }
 

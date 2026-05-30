@@ -74,6 +74,20 @@ export class BlogRepository {
         return this.blogPostModel.findByIdAndDelete(id).exec();
     }
 
+    findAdminList(filter: any, skip: number, limit: number) {
+        return this.blogPostModel
+            .find(filter)
+            .populate('authorId', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .exec();
+    }
+
+    countAdmin(filter: any) {
+        return this.blogPostModel.countDocuments(filter).exec();
+    }
+
     private buildPublishedFilter(
         params: PublishedListParams,
     ): QueryFilter<BlogPostDocument> {

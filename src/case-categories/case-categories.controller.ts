@@ -14,6 +14,7 @@ import { UserRole } from '../users/enums/user-role.enum';
 import { CaseCategoriesService } from './case-categories.service';
 import { CreateCaseCategoryDto } from './dto/create-case-category.dto';
 import { UpdateCaseCategoryDto } from './dto/update-case-category.dto';
+import { ActivityLog } from '../activity-log/decorators/activity.decorator';
 
 @Controller('case-categories')
 export class CaseCategoriesController {
@@ -38,6 +39,7 @@ export class CaseCategoriesController {
   }
 
   @Roles(UserRole.ADMIN)
+  @ActivityLog({ action: 'CREATE_CASE_CATEGORY', entity: 'case-category' })
   @Post()
   create(@Body() createCaseCategoryDto: CreateCaseCategoryDto) {
     return this.caseCategoriesService.create(createCaseCategoryDto);
@@ -50,6 +52,7 @@ export class CaseCategoriesController {
   }
 
   @Roles(UserRole.ADMIN)
+  @ActivityLog({ action: 'UPDATE_CASE_CATEGORY', entity: 'case-category' })
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -59,6 +62,7 @@ export class CaseCategoriesController {
   }
 
   @Roles(UserRole.ADMIN)
+  @ActivityLog({ action: 'DELETE_CASE_CATEGORY', entity: 'case-category' })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.caseCategoriesService.remove(id);

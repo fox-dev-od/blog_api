@@ -29,8 +29,8 @@ export class UsersService {
       email,
       name: createUserDto.name.trim(),
       passwordHash,
-      role: UserRole.USER,
-      isActive: true,
+      role: createUserDto.role ?? UserRole.USER,
+      isActive: createUserDto.isActive ?? true,
     });
 
     return this.toResponse(user);

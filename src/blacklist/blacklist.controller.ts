@@ -18,6 +18,7 @@ import { BlacklistService } from './blacklist.service';
 import { CreateBlacklistEntryDto } from './dto/create-blacklist-entry.dto';
 import { GetBlacklistQueryDto } from './dto/get-blacklist-query.dto';
 import { UpdateBlacklistEntryDto } from './dto/update-blacklist-entry.dto';
+import { ActivityLog } from '../activity-log/decorators/activity.decorator';
 
 type RequestWithUser = Request & {
   user?: CurrentUserData;
@@ -33,6 +34,7 @@ export class BlacklistController {
     return this.blacklistService.findAll(query);
   }
 
+  @ActivityLog({ action: 'ADD_TO_BLACKLIST', entity: 'blacklist' })
   @Post()
   create(
     @Body() dto: CreateBlacklistEntryDto,
@@ -46,21 +48,25 @@ export class BlacklistController {
     return this.blacklistService.findOne(id);
   }
 
+  @ActivityLog({ action: 'UPDATE_BLACKLIST_ENTRY', entity: 'blacklist' })
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateBlacklistEntryDto) {
     return this.blacklistService.update(id, dto);
   }
 
+  @ActivityLog({ action: 'REMOVE_FROM_BLACKLIST', entity: 'blacklist' })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.blacklistService.remove(id);
   }
 
+  @ActivityLog({ action: 'ACTIVATE_BLACKLIST_ENTRY', entity: 'blacklist' })
   @Patch(':id/activate')
   activate(@Param('id') id: string) {
     return this.blacklistService.activate(id);
   }
 
+  @ActivityLog({ action: 'DEACTIVATE_BLACKLIST_ENTRY', entity: 'blacklist' })
   @Patch(':id/deactivate')
   deactivate(@Param('id') id: string) {
     return this.blacklistService.deactivate(id);
