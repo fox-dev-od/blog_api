@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { CaseCategory } from '../../case-categories/schemas/case-category.schema';
 import { CaseBlockLayout } from '../enums/case-block-layout.enum';
@@ -156,7 +156,7 @@ export class Case {
   slug: string;
 
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: CaseCategory.name,
     required: true,
     index: true,
